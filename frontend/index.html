@@ -1,0 +1,798 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>NexaSupport — AI Customer Service</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;1,9..40,300&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0a0c10;
+      --surface: #111318;
+      --surface2: #181b22;
+      --border: rgba(255,255,255,0.07);
+      --accent: #00e5ff;
+      --accent2: #7c3aed;
+      --accent-glow: rgba(0,229,255,0.15);
+      --text: #e8eaf0;
+      --text-dim: #6b7280;
+      --text-muted: #374151;
+      --positive: #10b981;
+      --neutral: #f59e0b;
+      --negative: #ef4444;
+      --escalate: #f97316;
+      --technical: #3b82f6;
+      --billing: #8b5cf6;
+      --general: #10b981;
+      --radius: 16px;
+      --radius-sm: 10px;
+    }
+
+    body {
+      font-family: 'DM Sans', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    /* Background grid */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(0,229,255,0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0,229,255,0.03) 1px, transparent 1px);
+      background-size: 40px 40px;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* Glow blobs */
+    .blob {
+      position: fixed;
+      border-radius: 50%;
+      filter: blur(120px);
+      pointer-events: none;
+      z-index: 0;
+    }
+    .blob-1 { width: 400px; height: 400px; background: rgba(0,229,255,0.05); top: -100px; right: -100px; }
+    .blob-2 { width: 350px; height: 350px; background: rgba(124,58,237,0.06); bottom: -80px; left: -80px; }
+
+    /* HEADER */
+    header {
+      position: relative;
+      z-index: 10;
+      padding: 18px 32px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid var(--border);
+      background: rgba(10,12,16,0.8);
+      backdrop-filter: blur(20px);
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .logo-icon {
+      width: 38px; height: 38px;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      box-shadow: 0 0 20px rgba(0,229,255,0.3);
+    }
+
+    .logo-text {
+      font-family: 'Syne', sans-serif;
+      font-weight: 800;
+      font-size: 20px;
+      letter-spacing: -0.5px;
+    }
+
+    .logo-text span { color: var(--accent); }
+
+    .status-badge {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 14px;
+      border-radius: 100px;
+      background: rgba(16,185,129,0.1);
+      border: 1px solid rgba(16,185,129,0.3);
+      font-size: 13px;
+      color: var(--positive);
+      font-weight: 500;
+    }
+
+    .status-dot {
+      width: 7px; height: 7px;
+      border-radius: 50%;
+      background: var(--positive);
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.5; transform: scale(0.85); }
+    }
+
+    /* MAIN LAYOUT */
+    .main {
+      position: relative;
+      z-index: 1;
+      display: flex;
+      flex: 1;
+      height: calc(100vh - 73px);
+      overflow: hidden;
+    }
+
+    /* SIDEBAR */
+    .sidebar {
+      width: 280px;
+      flex-shrink: 0;
+      border-right: 1px solid var(--border);
+      background: var(--surface);
+      display: flex;
+      flex-direction: column;
+      padding: 24px 20px;
+      gap: 24px;
+      overflow-y: auto;
+    }
+
+    .sidebar-section-title {
+      font-family: 'Syne', sans-serif;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      color: var(--text-dim);
+      margin-bottom: 12px;
+    }
+
+    .api-input-group {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .api-input-group label {
+      font-size: 13px;
+      color: var(--text-dim);
+    }
+
+    .api-input {
+      width: 100%;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 10px 14px;
+      color: var(--text);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 13px;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    .api-input:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(0,229,255,0.1);
+    }
+
+    .api-input::placeholder { color: var(--text-muted); }
+
+    .quick-queries {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .quick-chip {
+      padding: 10px 14px;
+      border-radius: var(--radius-sm);
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      color: var(--text-dim);
+      font-size: 13px;
+      cursor: pointer;
+      transition: all 0.2s;
+      text-align: left;
+      line-height: 1.4;
+    }
+
+    .quick-chip:hover {
+      border-color: var(--accent);
+      color: var(--text);
+      background: rgba(0,229,255,0.05);
+    }
+
+    .quick-chip .chip-icon { margin-right: 8px; }
+
+    /* Stats */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    .stat-card {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 14px 12px;
+      text-align: center;
+    }
+
+    .stat-val {
+      font-family: 'Syne', sans-serif;
+      font-size: 22px;
+      font-weight: 700;
+      color: var(--accent);
+    }
+
+    .stat-label {
+      font-size: 11px;
+      color: var(--text-dim);
+      margin-top: 2px;
+    }
+
+    /* CHAT AREA */
+    .chat-area {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .messages {
+      flex: 1;
+      overflow-y: auto;
+      padding: 32px;
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+    }
+
+    .messages::-webkit-scrollbar { width: 4px; }
+    .messages::-webkit-scrollbar-track { background: transparent; }
+    .messages::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+    /* Welcome message */
+    .welcome {
+      text-align: center;
+      padding: 60px 20px;
+      animation: fadeUp 0.5s ease;
+    }
+
+    .welcome-icon {
+      font-size: 56px;
+      margin-bottom: 20px;
+      display: block;
+    }
+
+    .welcome h2 {
+      font-family: 'Syne', sans-serif;
+      font-size: 28px;
+      font-weight: 700;
+      margin-bottom: 10px;
+    }
+
+    .welcome p {
+      color: var(--text-dim);
+      font-size: 15px;
+      max-width: 420px;
+      margin: 0 auto;
+      line-height: 1.6;
+    }
+
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* Message bubbles */
+    .msg-wrapper {
+      display: flex;
+      flex-direction: column;
+      animation: fadeUp 0.3s ease;
+    }
+
+    .msg-user {
+      align-items: flex-end;
+    }
+
+    .msg-agent {
+      align-items: flex-start;
+    }
+
+    .msg-bubble {
+      max-width: 70%;
+      padding: 14px 18px;
+      border-radius: var(--radius);
+      font-size: 14.5px;
+      line-height: 1.65;
+      word-break: break-word;
+    }
+
+    .msg-user .msg-bubble {
+      background: linear-gradient(135deg, var(--accent2), #5b21b6);
+      color: #fff;
+      border-bottom-right-radius: 4px;
+    }
+
+    .msg-agent .msg-bubble {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-bottom-left-radius: 4px;
+      color: var(--text);
+    }
+
+    .msg-meta {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-top: 8px;
+      padding: 0 4px;
+    }
+
+    .msg-user .msg-meta { justify-content: flex-end; }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 3px 10px;
+      border-radius: 100px;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.3px;
+    }
+
+    .badge-category-technical { background: rgba(59,130,246,0.15); color: #60a5fa; border: 1px solid rgba(59,130,246,0.25); }
+    .badge-category-billing   { background: rgba(139,92,246,0.15); color: #a78bfa; border: 1px solid rgba(139,92,246,0.25); }
+    .badge-category-general   { background: rgba(16,185,129,0.15); color: #34d399; border: 1px solid rgba(16,185,129,0.25); }
+
+    .badge-sentiment-positive { background: rgba(16,185,129,0.12); color: #34d399; border: 1px solid rgba(16,185,129,0.2); }
+    .badge-sentiment-neutral  { background: rgba(245,158,11,0.12); color: #fbbf24; border: 1px solid rgba(245,158,11,0.2); }
+    .badge-sentiment-negative { background: rgba(239,68,68,0.12);  color: #f87171; border: 1px solid rgba(239,68,68,0.2); }
+
+    .badge-escalated { background: rgba(249,115,22,0.15); color: #fb923c; border: 1px solid rgba(249,115,22,0.25); }
+
+    .msg-time {
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+
+    /* Thinking indicator */
+    .thinking {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 16px 18px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      border-bottom-left-radius: 4px;
+      max-width: 200px;
+      animation: fadeUp 0.3s ease;
+    }
+
+    .thinking-dots {
+      display: flex;
+      gap: 5px;
+    }
+
+    .thinking-dots span {
+      width: 7px; height: 7px;
+      border-radius: 50%;
+      background: var(--accent);
+      animation: dot-bounce 1.2s infinite;
+    }
+
+    .thinking-dots span:nth-child(2) { animation-delay: 0.2s; }
+    .thinking-dots span:nth-child(3) { animation-delay: 0.4s; }
+
+    @keyframes dot-bounce {
+      0%, 100% { transform: translateY(0); opacity: 0.4; }
+      50% { transform: translateY(-6px); opacity: 1; }
+    }
+
+    .thinking-text {
+      font-size: 13px;
+      color: var(--text-dim);
+    }
+
+    /* INPUT BAR */
+    .input-bar {
+      padding: 20px 32px 24px;
+      border-top: 1px solid var(--border);
+      background: rgba(10,12,16,0.6);
+      backdrop-filter: blur(20px);
+    }
+
+    .input-row {
+      display: flex;
+      gap: 12px;
+      align-items: flex-end;
+    }
+
+    .input-wrap {
+      flex: 1;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      display: flex;
+      align-items: center;
+      padding: 4px 4px 4px 18px;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+
+    .input-wrap:focus-within {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(0,229,255,0.08);
+    }
+
+    #query-input {
+      flex: 1;
+      background: transparent;
+      border: none;
+      outline: none;
+      color: var(--text);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 14.5px;
+      padding: 10px 0;
+      resize: none;
+      max-height: 120px;
+    }
+
+    #query-input::placeholder { color: var(--text-muted); }
+
+    .send-btn {
+      width: 44px; height: 44px;
+      border-radius: 12px;
+      background: linear-gradient(135deg, var(--accent), #00b8d9);
+      border: none;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      transition: all 0.2s;
+      box-shadow: 0 4px 15px rgba(0,229,255,0.3);
+    }
+
+    .send-btn:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 6px 20px rgba(0,229,255,0.4);
+    }
+
+    .send-btn:active { transform: translateY(0); }
+
+    .send-btn svg { width: 18px; height: 18px; fill: #000; }
+
+    .send-btn:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+      transform: none;
+      box-shadow: none;
+    }
+
+    .input-hint {
+      text-align: center;
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-top: 10px;
+    }
+
+    .error-banner {
+      background: rgba(239,68,68,0.1);
+      border: 1px solid rgba(239,68,68,0.25);
+      border-radius: var(--radius-sm);
+      padding: 10px 16px;
+      font-size: 13px;
+      color: #f87171;
+      margin-bottom: 12px;
+      display: none;
+    }
+  </style>
+</head>
+<body>
+  <div class="blob blob-1"></div>
+  <div class="blob blob-2"></div>
+
+  <header>
+    <div class="logo">
+      <div class="logo-icon">⚡</div>
+      <div class="logo-text">Nexa<span>Support</span></div>
+    </div>
+    <div class="status-badge">
+      <div class="status-dot"></div>
+      AI Agent Online
+    </div>
+  </header>
+
+  <div class="main">
+    <!-- SIDEBAR -->
+    <aside class="sidebar">
+      <div>
+        <div class="sidebar-section-title">Configuration</div>
+        <div class="api-input-group">
+          <label>OpenRouter API Key <span style="color: var(--text-muted);">(optional)</span></label>
+          <input type="password" id="api-key" class="api-input" placeholder="Leave blank - using backend API key" />
+        </div>
+      </div>
+
+      <div>
+        <div class="sidebar-section-title">Quick Examples</div>
+        <div class="quick-queries">
+          <button class="quick-chip" onclick="setQuery('My internet is not working')">
+            <span class="chip-icon">🔧</span>My internet is not working
+          </button>
+          <button class="quick-chip" onclick="setQuery('Where can I find my bill?')">
+            <span class="chip-icon">💳</span>Where can I find my bill?
+          </button>
+          <button class="quick-chip" onclick="setQuery('What are your business hours?')">
+            <span class="chip-icon">🕐</span>What are your business hours?
+          </button>
+          <button class="quick-chip" onclick="setQuery('Calculate 125 * 8 + 200')">
+            <span class="chip-icon">🧮</span>Calculate 125 * 8 + 200
+          </button>
+          <button class="quick-chip" onclick="setQuery('I am very angry, my order is wrong!')">
+            <span class="chip-icon">😠</span>I'm very angry, my order is wrong!
+          </button>
+          <button class="quick-chip" onclick="setQuery('Write email for refund request')">
+            <span class="chip-icon">📧</span>Write email for refund request
+          </button>
+        </div>
+      </div>
+
+      <div>
+        <div class="sidebar-section-title">Session Stats</div>
+        <div class="stats-grid">
+          <div class="stat-card">
+            <div class="stat-val" id="stat-total">0</div>
+            <div class="stat-label">Queries</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-val" id="stat-escalated">0</div>
+            <div class="stat-label">Escalated</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-val" id="stat-technical">0</div>
+            <div class="stat-label">Technical</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-val" id="stat-billing">0</div>
+            <div class="stat-label">Billing</div>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- CHAT -->
+    <div class="chat-area">
+      <div class="messages" id="messages">
+        <div class="welcome" id="welcome">
+          <span class="welcome-icon">🤖</span>
+          <h2>Customer Service Agent</h2>
+          <p>Powered by LangGraph + LLaMA 3. Ask any support question — billing, technical issues, general inquiries, or math calculations.</p>
+        </div>
+      </div>
+
+      <div class="input-bar">
+        <div class="error-banner" id="error-banner"></div>
+        <div class="input-row">
+          <div class="input-wrap">
+            <textarea id="query-input" rows="1" placeholder="Type your support query here..."></textarea>
+          </div>
+          <button class="send-btn" id="send-btn" onclick="sendQuery()">
+            <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+              <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>
+            </svg>
+          </button>
+        </div>
+        <div class="input-hint">Press Enter to send · Shift+Enter for new line</div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const API_URL = 'http://localhost:8000';
+    let stats = { total: 0, escalated: 0, technical: 0, billing: 0 };
+
+    // Auto-resize textarea
+    const textarea = document.getElementById('query-input');
+    textarea.addEventListener('input', () => {
+      textarea.style.height = 'auto';
+      textarea.style.height = Math.min(textarea.scrollHeight, 120) + 'px';
+    });
+
+    textarea.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        sendQuery();
+      }
+    });
+
+    function setQuery(text) {
+      textarea.value = text;
+      textarea.focus();
+      textarea.style.height = 'auto';
+      textarea.style.height = Math.min(textarea.scrollHeight, 120) + 'px';
+    }
+
+    function hideWelcome() {
+      const w = document.getElementById('welcome');
+      if (w) w.remove();
+    }
+
+    function formatTime() {
+      return new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    }
+
+    function getCategoryClass(cat) {
+      const c = cat.toLowerCase();
+      if (c.includes('technical')) return 'badge-category-technical';
+      if (c.includes('billing')) return 'badge-category-billing';
+      return 'badge-category-general';
+    }
+
+    function getCategoryLabel(cat) {
+      const c = cat.toLowerCase();
+      if (c.includes('technical')) return '🔧 Technical';
+      if (c.includes('billing')) return '💳 Billing';
+      return '💬 General';
+    }
+
+    function getSentimentClass(s) {
+      const v = s.toLowerCase();
+      if (v.includes('positive')) return 'badge-sentiment-positive';
+      if (v.includes('negative')) return 'badge-sentiment-negative';
+      return 'badge-sentiment-neutral';
+    }
+
+    function getSentimentLabel(s) {
+      const v = s.toLowerCase();
+      if (v.includes('positive')) return '😊 Positive';
+      if (v.includes('negative')) return '😠 Negative';
+      return '😐 Neutral';
+    }
+
+    function isEscalated(response) {
+      return response.toLowerCase().includes('escalated') || response.toLowerCase().includes('human agent');
+    }
+
+    function addUserMessage(text) {
+      hideWelcome();
+      const messages = document.getElementById('messages');
+      messages.innerHTML += `
+        <div class="msg-wrapper msg-user">
+          <div class="msg-bubble">${escHtml(text)}</div>
+          <div class="msg-meta">
+            <span class="msg-time">${formatTime()}</span>
+          </div>
+        </div>`;
+      scrollBottom();
+    }
+
+    function showThinking() {
+      hideWelcome();
+      const messages = document.getElementById('messages');
+      messages.innerHTML += `
+        <div class="msg-wrapper msg-agent" id="thinking">
+          <div class="thinking">
+            <div class="thinking-dots">
+              <span></span><span></span><span></span>
+            </div>
+            <div class="thinking-text">Processing…</div>
+          </div>
+        </div>`;
+      scrollBottom();
+    }
+
+    function removeThinking() {
+      const t = document.getElementById('thinking');
+      if (t) t.remove();
+    }
+
+    function addAgentMessage(data) {
+      const messages = document.getElementById('messages');
+      const escalated = isEscalated(data.response);
+      const catClass = getCategoryClass(data.category);
+      const sentClass = getSentimentClass(data.sentiment);
+
+      messages.innerHTML += `
+        <div class="msg-wrapper msg-agent">
+          <div class="msg-bubble">${escHtml(data.response)}</div>
+          <div class="msg-meta">
+            <span class="badge ${catClass}">${getCategoryLabel(data.category)}</span>
+            <span class="badge ${sentClass}">${getSentimentLabel(data.sentiment)}</span>
+            ${escalated ? '<span class="badge badge-escalated">🚨 Escalated</span>' : ''}
+            <span class="msg-time">${formatTime()}</span>
+          </div>
+        </div>`;
+      scrollBottom();
+    }
+
+    function updateStats(data) {
+      stats.total++;
+      const cat = data.category.toLowerCase();
+      if (cat.includes('technical')) stats.technical++;
+      if (cat.includes('billing')) stats.billing++;
+      if (isEscalated(data.response)) stats.escalated++;
+
+      document.getElementById('stat-total').textContent = stats.total;
+      document.getElementById('stat-escalated').textContent = stats.escalated;
+      document.getElementById('stat-technical').textContent = stats.technical;
+      document.getElementById('stat-billing').textContent = stats.billing;
+    }
+
+    function showError(msg) {
+      const b = document.getElementById('error-banner');
+      b.textContent = msg;
+      b.style.display = 'block';
+      setTimeout(() => b.style.display = 'none', 5000);
+    }
+
+    function escHtml(str) {
+      return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>');
+    }
+
+    function scrollBottom() {
+      const m = document.getElementById('messages');
+      m.scrollTop = m.scrollHeight;
+    }
+
+    async function sendQuery() {
+      const query = textarea.value.trim();
+      const apiKey = document.getElementById('api-key').value.trim();
+
+      if (!query) return;
+
+      const btn = document.getElementById('send-btn');
+      btn.disabled = true;
+      textarea.value = '';
+      textarea.style.height = 'auto';
+
+      addUserMessage(query);
+      showThinking();
+
+      try {
+        const res = await fetch(`${API_URL}/query`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ query, openrouter_api_key: apiKey || '' })
+        });
+
+        if (!res.ok) {
+          const err = await res.json();
+          throw new Error(err.detail || 'Server error');
+        }
+
+        const data = await res.json();
+        removeThinking();
+        addAgentMessage(data);
+        updateStats(data);
+      } catch (err) {
+        removeThinking();
+        showError('Error: ' + err.message + '. Make sure the backend server is running on port 8000.');
+      }
+
+      btn.disabled = false;
+      textarea.focus();
+    }
+  </script>
+</body>
+</html>
